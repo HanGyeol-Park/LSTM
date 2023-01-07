@@ -13,7 +13,7 @@ np.random.seed(0)                   # set the seed for reproducibility
 
 corpus = []
 
-class word2vec():
+class skipgram():
     def __init__(self):
         self.n = settings['n']
         self.eta = settings['learning_rate']
@@ -59,11 +59,14 @@ class word2vec():
 
         return  exp_x / np.sum(exp_x, axis=0)
 
-    def forward(self, x):
-        h = np.dot(self.w1.T, x)
-        u = np.dot(self.w2.T, h)
-        y_c = self.softmax(u)
-        return y_c, h, u
+    def forward(self, x_s):
+        y_c_list = []
+        for x in x_s:
+            h = np.dot(self.w1.T, x)
+            u = np.dot(self.w2.T, h)
+            y_c = function.softmax(self, u)
+            y_c_list.append(y_c)
+        return y_c_list, h, u
 
     def backward(self, e, h, x):
         dl_dw2 = np.outer(h, e)
@@ -84,10 +87,13 @@ class word2vec():
             self.loss = 0
 
             for w_t, w_c in traning_data:
-                y_pred, h, u = self.forward(w_t)
-                EI = np.sum([np.subtract(y_pred, word) for word in w_c], axis = 0)
+                y_pred_list, h, u = self.forward(w_c)
+
+                EI = np.sum([np.subtract(y_pred, w_t) for y_pred in y_pred_list], axis=0)
+
                 self.backward(EI, h, w_t)
-                self.loss += -np.sum(y_pred[word.index(1)] for word in w_c)
+                for i in range(len(y_pred_list)):
+                    self.loss += -np.sum(y_pred_list[i][w_t.index(1)])
 
         pass
 
@@ -103,6 +109,7 @@ class word2vec():
 
         word_similarity = {}
         for i in range(self.v_count):
+
             w = self.w1[i]
             dot_product = np.dot(vw1, w)
             norm_product = np.linalg.norm(vw1) * np.linalg.norm(w)
@@ -112,7 +119,7 @@ class word2vec():
             if word1 != word:
                 word_similarity[word1] = similarity
 
-        sorted_similarity = sorted(word_similarity.items(), key = lambda item: item[1], reverse=True)
+        sorted_similarity = sorted(word_similarity.items(), key = lambda item: item[1])
 
         for word, sim in sorted_similarity[:top_n]:
             print(word, sim)
